@@ -27,7 +27,7 @@ r = ds['train']['response']
 p = ds['train']['prompt']
 
 # add the new data to the existing dataframe
-df = df.append(pd.DataFrame({'Prompts': p, 'Responses': r}), ignore_index=True)
+df = df._append(pd.DataFrame({'Prompts': p, 'Responses': r}), ignore_index=True)
 
 
 # Preprocessing Function
