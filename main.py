@@ -19,10 +19,22 @@ tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
 print("Loading dataset...")
 df = pd.read_csv('conversations.csv')
 
+from datasets import load_dataset
+
+# Login using e.g. `huggingface-cli login` to access this dataset
+ds = load_dataset("nampdn-ai/tiny-codes")
+r = ds['train']['response']
+p = ds['train']['prompt']
+
+# add the new data to the existing dataframe
+df = df.append(pd.DataFrame({'Prompts': p, 'Responses': r}), ignore_index=True)
+
+
 # Preprocessing Function
 def preprocess_text(row):
     prompt = row.get("Prompts", "")
     response = row.get("Responses", "")
+    # Combine prompt and response
     text = f"{prompt} {response}"
     return text.strip()
 
