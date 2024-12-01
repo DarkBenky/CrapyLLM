@@ -6,6 +6,14 @@ from tensorflow.keras.layers import (
     Input, Embedding, LSTM, Dense, Dropout, Bidirectional, MultiHeadAttention,
     LayerNormalization, Add
 )
+from tensorflow.keras.callbacks import TensorBoard
+import datetime
+import tensorboard
+import numpy as np  
+
+# Initialize TensorBoard callback
+log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
 
 # Load Dataset
 print("Loading dataset...")
@@ -23,12 +31,12 @@ tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 
 # Model Parameters
 vocab_size = tokenizer.vocab_size
-embedding_dim = 128
+embedding_dim = 1024
 lstm_units = 256
-num_heads = 4
-ff_dim = 512
-dropout_rate = 0.25
-sequence_length = 512  # Reduced sequence length
+num_heads = 16
+ff_dim = 1024
+dropout_rate = 0.4
+sequence_length = 128  # Reduced sequence length for lower RAM usage
 batch_size = 32
 
 # Generator function
@@ -98,5 +106,89 @@ model.compile(
 # Summary
 model.summary()
 
-# Training
-history = model.fit(dataset, epochs=5)
+# Training with TensorBoard callback
+history = model.fit(
+    dataset,
+    epochs=3,
+    callbacks=[tensorboard_callback]
+)
+
+# Save the model
+model.save('crappy_chatbot.h5')
+
+def generate_text(model, initial_text, tokenizer, max_length=50, temperature=0.7):
+    """
+    Generate text sequentially using the model's predictions
+    """
+    # Initial tokenization
+    context = tokenizer(
+        initial_text,
+        max_length=sequence_length,
+        truncation=True,
+        padding='max_length',
+        return_tensors='tf'
+    )
+    
+    generated_tokens = context['input_ids'][0].numpy().tolist()
+    generated_text = initial_text
+    
+    for _ in range(max_length):
+        # Prepare input for model
+        current_tokens = generated_tokens[-sequence_length:]
+        current_input = tf.constant([current_tokens])
+        current_mask = tf.ones_like(current_input)
+        
+        # Get model predictions
+        predictions = model.predict(
+            {'inputs': current_input, 'attention_masks': current_mask},
+            verbose=0
+        )
+        
+        # Get logits for the next token
+        next_token_logits = predictions[0, -1, :] / temperature
+        
+        # Apply softmax for probabilities
+        probs = tf.nn.softmax(next_token_logits).numpy()
+        
+        # Sample next token
+        next_token = np.random.choice(len(probs), p=probs)
+        
+        # Append to generated sequence
+        generated_tokens.append(next_token)
+        
+        # Decode new token
+        new_text = tokenizer.decode([next_token], skip_special_tokens=True)
+        generated_text += new_text
+        
+        # Check stopping conditions
+        if new_text.strip() in ['.', '!', '?', '\n'] and len(generated_text.split()) > 5:
+            break
+        if '[SEP]' in new_text or '[PAD]' in new_text:
+            break
+    
+    return generated_text
+
+# Updated interactive loop
+print("Model training complete. You can now interact with the model.")
+
+while True:
+    user_input = input("You: ")
+    if 't=' in user_input:  # Fixed: using 'in' operator instead of contains()
+        temperature = float(user_input.split('=')[1])
+        print(f"Temperature set to {temperature}")
+        continue
+    if user_input.lower() in ['exit', 'quit']:
+        break
+    
+    # Generate response
+    response = generate_text(
+        model=model,
+        initial_text=user_input,
+        tokenizer=tokenizer,
+        max_length=50,
+        temperature=0.1
+    )
+    
+    print(f"Model: {response}")
+
+print("Conversation ended.")
