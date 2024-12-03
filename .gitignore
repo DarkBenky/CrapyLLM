@@ -5,3 +5,4 @@ wandb/
 .venv/
 logs/
 *.h5
+*.keras
