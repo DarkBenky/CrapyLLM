@@ -22,11 +22,23 @@ NUMBER_OF_LSTM_UNITS = 256
 NUMBER_OF_LSTM_LAYERS = 2
 
 # Load and Preprocess Dataset
-def load_and_preprocess_data(file_path):
+def load_and_preprocess_data(file_path, dataset_External = False):
     df = pd.read_csv(file_path)
     
     # Combine prompts and responses
     texts = []
+
+    if dataset_External:
+        from datasets import load_dataset
+
+        # Login using e.g. `huggingface-cli login` to access this dataset
+        ds = load_dataset("nampdn-ai/tiny-codes")
+        r = ds['train']['response']
+        p = ds['train']['prompt']
+
+        for rs , pr in zip(r, p):
+            texts.append(pr + ' ' + rs)  
+    
     for _, row in df.iterrows():
         prompt = str(row.get('Prompts', ''))
         response = str(row.get('Responses', ''))
@@ -80,7 +92,9 @@ def create_text_model(vocab_size, max_sequence_length, embedding_dim):
     
     model = Model(inputs=inputs, outputs=outputs)
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-    
+
+    model.summary()
+
     return model
 
 # Text Generation Function
@@ -90,25 +104,34 @@ def generate_text(model, tokenizer, seed_text, max_sequence_length, next_words=5
         token_list = tokenizer.texts_to_sequences([seed_text])[0]
         token_list = pad_sequences([token_list], maxlen=max_sequence_length-1, padding='post', truncating='post')
         
+        temperature = 0.7
+
         # Predict next token
         predicted = model.predict(token_list, verbose=0)
-        predicted_word_index = np.argmax(predicted[0, -1, :])
-        
+        next_token_logits = predicted[0, -1, :] / temperature
+
+        # Apply softmax to get probabilities
+        probabilities = tf.nn.softmax(next_token_logits).numpy()
+
+        # Sample from the probability distribution
+        predicted_word_index = np.random.choice(len(probabilities), p=probabilities)
+
         # Convert index to word
-        output_word = ""
-        for word, index in tokenizer.word_index.items():
-            if index == predicted_word_index:
-                output_word = word
-                break
+        output_word = tokenizer.index_word[predicted_word_index]
         
+         # Append the word to the seed text
         seed_text += " " + output_word
+
+        # Safety check for maximum length
+        if len(seed_text.split()) > max_sequence_length:
+            break
     
     return seed_text
 
 # Main Training and Generation Script
-def main():
+def main(ext = False):
     # Load and preprocess data
-    texts = load_and_preprocess_data('conversations.csv')
+    texts = load_and_preprocess_data('conversations.csv', ext)
     
     # Tokenize texts
     tokenizer, X, y = tokenize_texts(texts, MAX_WORDS, MAX_SEQUENCE_LENGTH)
@@ -117,7 +140,13 @@ def main():
     vocab_size = len(tokenizer.word_index) + 1
     
     # Create model
-    model = create_text_model(vocab_size, MAX_SEQUENCE_LENGTH, EMBEDDING_DIM)
+    # Check if model already exists
+    if os.path.exists('text_generation_model.keras'):
+        print("Model already exists. Skipping training.")
+        # load model
+        model = load_model('text_generation_model.keras')
+    else:
+        model = create_text_model(vocab_size, MAX_SEQUENCE_LENGTH, EMBEDDING_DIM)
     
     # Model checkpoint
     checkpoint = ModelCheckpoint(
@@ -151,7 +180,7 @@ def main():
 # Interactive Generation
 def interact_with_model():
     # Load model and tokenizer
-    model = load_model('text_generation_model.h5')
+    model = load_model('text_generation_model.keras')
     
     import pickle
     with open('tokenizer.pickle', 'rb') as handle:
@@ -185,5 +214,7 @@ if __name__ == '__main__':
         main()
     elif mode == 'chat':
         interact_with_model()
+    elif mode == 't':
+        main(True)
     else:
         print("Invalid mode. Please enter 'train' or 'chat'.")
