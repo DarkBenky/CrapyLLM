@@ -37,12 +37,19 @@ def load_and_preprocess_data(file_path, dataset_External = False):
         p = ds['train']['prompt']
 
         for rs , pr in zip(r, p):
-            texts.append(pr + ' ' + rs)  
+            t = pr + ' ' + rs
+            for text in t.split('.'):
+                if len(text) > 3:
+                    texts.append(text)
     
     for _, row in df.iterrows():
         prompt = str(row.get('Prompts', ''))
         response = str(row.get('Responses', ''))
-        texts.append(prompt + ' ' + response)
+        t = ''
+        for text in (prompt + ' ' + response).split():
+            t += text + ' '
+            if len(t) > 10:
+                texts.append(t)
     
     return texts
 
