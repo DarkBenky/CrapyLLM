@@ -216,10 +216,10 @@ if __name__ == "__main__":
         for _ in range(32):
             next_word = predictor.predict_next_word(
                 input_text, 
-                processor.tokenizer
+                processor.tokenizer,
                 temperature=0.25
             )
             input_text += next_word + " "
         
 
-        print(f"Next word prediction: {next_word}")
+        print(f"Next word prediction: {input_text}")
