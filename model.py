@@ -11,6 +11,8 @@ from tensorflow.keras.layers import Input, Embedding, LSTM, Dense, Dropout
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow.keras.preprocessing.text import tokenizer_from_json
 
+import random
+
 class TextProcessor:
     def __init__(self, max_vocab_size=10000, max_sequence_length=50):
         self.max_vocab_size = max_vocab_size
@@ -26,15 +28,42 @@ class TextProcessor:
         X = []  # Text inputs
         Y = []  # Next words
 
-        prompts = df.get("Prompts", "")[:1024]
-        responses = df.get("Responses", "")[:1024]
+        COUNT = 512
 
+        prompts = df.get("Prompts", "").tolist()
+        responses = df.get("Responses", "").tolist()
+
+        random_prompts = []
+        random_responses = []
+
+        while len(random_prompts) < COUNT:
+            random_index = random.randint(0, len(prompts) - 1)
+            random_prompts.append(prompts.pop(random_index))
+            random_responses.append(responses.pop(random_index))
+
+        prompts = random_prompts
+        responses = random_responses
+
+        del random_prompts
+        del random_responses
 
         for p, r in zip(prompts, responses):
-            text = f"Prompt: {p} Response:"
+            text = f"Prompt: {p} Response: "
             words = r.split()
             for i in range(1, len(words)):
                 input_sequence = text + ' '.join(words[:i])
+                next_word = words[i]
+                X.append(input_sequence)
+                Y.append(next_word)
+                # input without prompt
+                X.append('Response: '+' '.join(words[:i]))
+                Y.append(next_word)
+
+        # Train also on prompts
+        for p in prompts:
+            words = p.split()
+            for i in range(1, len(words)):
+                input_sequence = "Prompt: " + ' '.join(words[:i])
                 next_word = words[i]
                 X.append(input_sequence)
                 Y.append(next_word)
@@ -79,7 +108,7 @@ class TextProcessor:
 
         return np.array(X_padded), np.array(Y_encoded)
 
-    def create_tf_dataset(self, X, Y, batch_size=32):
+    def create_tf_dataset(self, X, Y, batch_size=64):
         dataset = tf.data.Dataset.from_tensor_slices((X, Y))
         dataset = dataset.shuffle(buffer_size=10000)
         dataset = dataset.batch(batch_size)

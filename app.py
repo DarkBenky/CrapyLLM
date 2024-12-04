@@ -64,10 +64,12 @@ def predict():
             return render_template('index.html', prediction="Error loading model. Please train the model first.")
         
         response = ""
+        temperate = 0.25
         for _ in range(128):
-            next_word = predictor.predict_next_word(user_input, processor.tokenizer, temperature=0.35)
+            next_word = predictor.predict_next_word(user_input, processor.tokenizer, temperature=temperate)
             if "<OOV>" in next_word:
                 next_word = ""
+                temperate += 0.01
             user_input += next_word + " "
             prediction = f"{user_input} {next_word}"
             response += next_word + " "
