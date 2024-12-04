@@ -28,7 +28,7 @@ class TextProcessor:
         X = []  # Text inputs
         Y = []  # Next words
 
-        COUNT = 256
+        COUNT = 400
 
         prompts = df.get("Prompts", "").tolist()
         responses = df.get("Responses", "").tolist()
@@ -37,19 +37,18 @@ class TextProcessor:
         func_prompts = func_df.get("Prompts", "").tolist()
         func_responses = func_df.get("Responses", "").tolist()
 
-        random_func_prompts = []
-        random_func_responses = []
-
-        while len(random_func_prompts) < COUNT:
+        c = 0
+        while c < COUNT // 1.5:
             random_index = random.randint(0, len(func_prompts) - 1)
-            random_func_prompts.append(func_prompts.pop(random_index))
-            random_func_responses.append(func_responses.pop(random_index))
+            X.append(func_prompts.pop(random_index))
+            Y.append(func_responses.pop(random_index))
+            c += 1
 
 
         random_prompts = []
         random_responses = []
 
-        while len(random_prompts) < COUNT:
+        while len(random_prompts) < COUNT * 1.5:
             random_index = random.randint(0, len(prompts) - 1)
             random_prompts.append(prompts.pop(random_index))
             random_responses.append(responses.pop(random_index))

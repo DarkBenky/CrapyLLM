@@ -42,7 +42,7 @@ if __name__ == "__main__":
             # process the function for AI
             functions_words = f.split()
             for i in range(len(functions_words)// 5, len(functions_words)):
-                input_sequence = "Prompt: finish the function" + ' '.join(functions_words[:i]) + "Response: "
+                input_sequence = "Prompt: finish the function " + ' '.join(functions_words[:i]) + "Response: "
                 next_word = functions_words[i]
                 Prompts.append(input_sequence)
                 Responses.append(next_word)
