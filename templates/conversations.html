@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CrappyAI - Conversations (Mostly Nonsense)</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            text-align: center;
+            padding-top: 50px;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: #1e1e1e;
+            padding: 40px;
+            margin: auto;
+            width: 80%;
+            box-shadow: 0px 0px 20px rgba(255, 71, 87, 0.2);
+            border-radius: 10px;
+            border: 1px solid #333;
+        }
+        h1 {
+            color: #ff4757;
+            text-shadow: 0 0 10px rgba(255, 71, 87, 0.5);
+            margin-bottom: 30px;
+        }
+        .navbar {
+            background-color: #1a1a1a;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .navbar a {
+            float: left;
+            display: block;
+            color: #ff4757;
+            text-align: center;
+            padding: 14px 16px;
+            text-decoration: none;
+            transition: background-color 0.3s;
+        }
+        .navbar a:hover {
+            background-color: #333;
+            color: white;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #2a2a2a;
+        }
+        th, td {
+            padding: 12px;
+            border: 1px solid #444;
+            text-align: left;
+            color: #e0e0e0;
+        }
+        th {
+            background-color: #ff4757;
+            color: white;
+        }
+        .pagination {
+            margin-top: 20px;
+        }
+        .pagination a {
+            color: #ff4757;
+            float: left;
+            padding: 8px 16px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border: 1px solid #444;
+            margin: 0 4px;
+            background-color: #2a2a2a;
+            border-radius: 5px;
+        }
+        .pagination a.active {
+            background-color: #ff4757;
+            color: white;
+            border: 1px solid #ff4757;
+        }
+        .pagination a:hover {
+            background-color: #333;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(255, 71, 87, 0.4);
+        }
+        .conversation-note {
+            font-size: 12px;
+            color: #777;
+            font-style: italic;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <a href="/">Home</a>
+        <a href="/predict">Predict Next Word</a>
+        <a href="/conversations">Conversations</a>
+    </div>
+    <div class="container">
+        <h1>CrappyAI Conversations Log</h1>
+        <table>
+            <tr>
+                <th>Prompt (aka User Confusion)</th>
+                <th>Response (aka Our Best Guess)</th>
+                <th>Timestamp (When Chaos Occurred)</th>
+            </tr>
+            {% for conversation in conversations %}
+            <tr>
+                <td>{{ conversation[0] }}</td>
+                <td>{{ conversation[1] }}</td>
+                <td>{{ conversation[2] }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        <div class="pagination">
+            {% if prev_url %}
+                <a href="{{ prev_url }}">&laquo; Previous Nonsense</a>
+            {% endif %}
+            {% if next_url %}
+                <a href="{{ next_url }}">Next Chaos &raquo;</a>
+            {% endif %}
+        </div>
+        <div class="conversation-note">
+            🤖 Warning: Conversations may contain 99% buzzwords, 1% actual information! 📊
+        </div>
+    </div>
+</body>
+</html>
