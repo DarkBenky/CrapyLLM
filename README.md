@@ -22,3 +22,9 @@ A simple Flask application.
     ```bash
     python3 app.py
     ```
+
+4. **Train Model**
+
+    ```bash
+    python3 model.py
+    ```
