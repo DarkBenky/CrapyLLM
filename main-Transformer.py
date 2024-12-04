@@ -42,7 +42,7 @@ def load_and_preprocess_data(file_path, dataset_External = False):
                 if len(text) > 3:
                     texts.append(text)
     
-    for _, row in df.iterrows():
+    for i, row in df.iterrows():
         prompt = str(row.get('Prompts', ''))
         response = str(row.get('Responses', ''))
         t = ''
@@ -50,6 +50,7 @@ def load_and_preprocess_data(file_path, dataset_External = False):
             t += text + ' '
             if len(t) > 10:
                 texts.append(t)
+        print(i,"/" ,len(df))
     
     return texts
 
