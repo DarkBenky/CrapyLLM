@@ -211,8 +211,15 @@ if __name__ == "__main__":
         input_text = input("Enter prompt (or 'exit' to quit): ")
         if input_text.lower() == 'exit':
             break
-        next_word = predictor.predict_next_word(
-            input_text, 
-            processor.tokenizer
-        )
+            
+        input_text = "Prompt: " + input_text + " Response: "
+        for _ in range(32):
+            next_word = predictor.predict_next_word(
+                input_text, 
+                processor.tokenizer
+                temperature=0.25
+            )
+            input_text += next_word + " "
+        
+
         print(f"Next word prediction: {next_word}")
