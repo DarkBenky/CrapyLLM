@@ -29,7 +29,7 @@ class TextProcessor:
         prompts = df.get("Prompts", "")[:1024]
         responses = df.get("Responses", "")[:1024]
 
-        # Create input-target pairs
+
         for p, r in zip(prompts, responses):
             text = f"Prompt: {p} Response:"
             words = r.split()
@@ -39,26 +39,26 @@ class TextProcessor:
                 X.append(input_sequence)
                 Y.append(next_word)
 
-        # Check if tokenizer exists
+
         if os.path.exists(tokenizer_path):
             print("Loading existing tokenizer...")
             self.load_tokenizer(tokenizer_path)
         else:
             print("Creating new tokenizer...")
-            # Fit tokenizer on all text
+
             self.tokenizer.fit_on_texts(X + Y)
             self.vocab_size = min(
                 self.max_vocab_size, 
                 len(self.tokenizer.word_index) + 1
             )
-            # Save the new tokenizer
+
             self.save_tokenizer(tokenizer_path)
 
-        # Convert to sequences
+
         X_seq = self.tokenizer.texts_to_sequences(X)
         Y_seq = self.tokenizer.texts_to_sequences(Y)
 
-        # Pad X sequences
+
         X_padded = pad_sequences(
             X_seq, 
             maxlen=self.max_sequence_length,
@@ -66,12 +66,12 @@ class TextProcessor:
             truncating='pre'
         )
 
-        # Process Y sequences
+
         Y_processed = np.array([
             seq[0] if len(seq) > 0 else 0 for seq in Y_seq
         ])
 
-        # Convert Y to one-hot encoded format
+
         Y_encoded = tf.keras.utils.to_categorical(
             Y_processed, 
             num_classes=self.vocab_size
@@ -181,7 +181,6 @@ if __name__ == "__main__":
     print(f"Input shape: {X_processed.shape}")
     print(f"Output shape: {Y_processed.shape}")
 
-    # Check if model exists
     if os.path.exists('next_word_model.keras'):
         print("Loading existing model...")
         predictor = NextWordPredictor(
@@ -206,7 +205,7 @@ if __name__ == "__main__":
             checkpoint_path='next_word_model.keras'
         )
 
-    # Interactive prediction
+
     while True:
         input_text = input("Enter prompt (or 'exit' to quit): ")
         if input_text.lower() == 'exit':

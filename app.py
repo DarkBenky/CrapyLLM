@@ -1,5 +1,3 @@
-# FILE: app.py
-
 from flask import Flask, render_template, request, url_for
 import tensorflow as tf
 from tensorflow.keras.models import load_model
@@ -26,7 +24,6 @@ try:
         max_sequence_length=512
     )
 
-    # Load tokenizer
     tokenizer_path = 'tokenizer.json'
     if os.path.exists(tokenizer_path):
         processor.load_tokenizer(tokenizer_path)
@@ -34,7 +31,6 @@ try:
     else:
         raise FileNotFoundError("Tokenizer file not found. Please train the model first.")
 
-    # Initialize NextWordPredictor
     model_path = 'next_word_model.keras'
     predictor = NextWordPredictor(
         vocab_size=processor.vocab_size, 
@@ -68,8 +64,10 @@ def predict():
             return render_template('index.html', prediction="Error loading model. Please train the model first.")
         
         response = ""
-        for _ in range(32):
-            next_word = predictor.predict_next_word(user_input, processor.tokenizer, temperature=0.25)
+        for _ in range(128):
+            next_word = predictor.predict_next_word(user_input, processor.tokenizer, temperature=0.35)
+            if "<OOV>" in next_word:
+                next_word = ""
             user_input += next_word + " "
             prediction = f"{user_input} {next_word}"
             response += next_word + " "
