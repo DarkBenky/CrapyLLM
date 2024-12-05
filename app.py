@@ -31,7 +31,7 @@ try:
     else:
         raise FileNotFoundError("Tokenizer file not found. Please train the model first.")
 
-    model_path = 'next_word_model.keras'
+    model_path = 'next_word_model-big.keras'
     predictor = NextWordPredictor(
         vocab_size=processor.vocab_size, 
         sequence_length=processor.max_sequence_length

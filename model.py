@@ -7,7 +7,7 @@ import os
 
 # Add these imports
 from tensorflow.keras.models import Model, load_model
-from tensorflow.keras.layers import Input, Embedding, LSTM, Dense, Dropout
+from tensorflow.keras.layers import Input, Embedding, LSTM, Dense, Dropout, LayerNormalization, Bidirectional, MultiHeadAttention, Add
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow.keras.preprocessing.text import tokenizer_from_json
 
@@ -28,7 +28,7 @@ class TextProcessor:
         X = []  # Text inputs
         Y = []  # Next words
 
-        COUNT = 400
+        COUNT = 128
 
         prompts = df.get("Prompts", "").tolist()
         responses = df.get("Responses", "").tolist()
@@ -153,26 +153,47 @@ class NextWordPredictor:
         self.model = self.build_model()
 
     def build_model(self):
+        # Input layer
         inputs = Input(shape=(self.sequence_length,))
-        x = Embedding(self.vocab_size, self.embedding_dim)(inputs)
-        x = Dropout(0.2)(x)
-        x = LSTM(128, return_sequences=False)(x)
-        x = Dropout(0.2)(x)
-        x = Dense(256, activation='relu')(x)
-        x = Dropout(0.2)(x)
+        
+        # Smaller embedding
+        x = Embedding(self.vocab_size, 512)(inputs)
+        x = LayerNormalization()(x)
+        
+        # Single Bidirectional LSTM with smaller units
+        x = Bidirectional(LSTM(128, return_sequences=True))(x)
+        
+        # Simplified attention
+        attention_output = MultiHeadAttention(
+            num_heads=4, 
+            key_dim=64
+        )(x, x)
+        x = Add()([x, attention_output])
+        x = LayerNormalization()(x)
+        
+        # Global average pooling instead of another LSTM
+        x = tf.keras.layers.GlobalAveragePooling1D()(x)
+        
+        x = Dense(128, activation='relu')(x)
+        x = Dropout(0.1)(x)
+        x = Dense(128, activation='relu')(x)
+        x = Dropout(0.1)(x)
+        
+        # Output layer
         outputs = Dense(self.vocab_size, activation='softmax')(x)
+        
+        # Create and compile model
         model = Model(inputs=inputs, outputs=outputs)
         model.compile(
-            optimizer='adam', 
-            loss='categorical_crossentropy', 
+            optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
+            loss='categorical_crossentropy',
             metrics=['accuracy']
         )
-
+        
         model.summary()
-
         return model
 
-    def train(self, train_dataset, epochs=10, checkpoint_path='next_word_model.keras'):
+    def train(self, train_dataset, epochs=10, checkpoint_path='next_word_model-big.keras'):
         checkpoint = ModelCheckpoint(
             checkpoint_path, 
             monitor='loss', 
@@ -186,7 +207,7 @@ class NextWordPredictor:
         )
         self.model.save(checkpoint_path)
 
-    def load(self, model_path='next_word_model.keras'):
+    def load(self, model_path='next_word_model-big.keras'):
         self.model = load_model(model_path)
 
     def predict_next_word(self, input_text, tokenizer, temperature=1.0):
@@ -222,17 +243,17 @@ if __name__ == "__main__":
     print(f"Input shape: {X_processed.shape}")
     print(f"Output shape: {Y_processed.shape}")
 
-    if os.path.exists('next_word_model.keras'):
+    if os.path.exists('next_word_model-big.keras'):
         print("Loading existing model...")
         predictor = NextWordPredictor(
             processor.vocab_size, 
             processor.max_sequence_length
         )
-        predictor.load('next_word_model.keras')
+        predictor.load('next_word_model-big.keras')
         predictor.train(
             train_dataset, 
             epochs=100, 
-            checkpoint_path='next_word_model.keras'
+            checkpoint_path='next_word_model-big.keras'
         )
     else:
         print("Training new model...")
@@ -243,7 +264,7 @@ if __name__ == "__main__":
         predictor.train(
             train_dataset, 
             epochs=100, 
-            checkpoint_path='next_word_model.keras'
+            checkpoint_path='next_word_model-big.keras'
         )
 
 
