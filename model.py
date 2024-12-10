@@ -33,31 +33,20 @@ class TextProcessor:
         prompts = df.get("Prompts", "").tolist()
         responses = df.get("Responses", "").tolist()
 
+        prompts = [random.choice(prompts) for i in range(COUNT)]
+        responses = [random.choice(responses) for i in range(COUNT)]
+
         func_df = pd.read_csv('functions.csv')
         func_prompts = func_df.get("Prompts", "").tolist()
         func_responses = func_df.get("Responses", "").tolist()
 
         c = 0
-        while c < COUNT // 1.5:
+        while c < COUNT :
             random_index = random.randint(0, len(func_prompts) - 1)
             X.append(func_prompts.pop(random_index))
             Y.append(func_responses.pop(random_index))
             c += 1
 
-
-        random_prompts = []
-        random_responses = []
-
-        while len(random_prompts) < COUNT * 1.5:
-            random_index = random.randint(0, len(prompts) - 1)
-            random_prompts.append(prompts.pop(random_index))
-            random_responses.append(responses.pop(random_index))
-
-        prompts = random_prompts
-        responses = random_responses
-
-        del random_prompts
-        del random_responses
 
         for p, r in zip(prompts, responses):
             text = f"Prompt: {p} Response: "
@@ -145,6 +134,8 @@ class TextProcessor:
                 len(self.tokenizer.word_index) + 1
             )
 
+LR = 1e-4
+
 class NextWordPredictor:
     def __init__(self, vocab_size, sequence_length, embedding_dim=128):
         self.vocab_size = vocab_size
@@ -185,7 +176,7 @@ class NextWordPredictor:
         # Create and compile model
         model = Model(inputs=inputs, outputs=outputs)
         model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
+            optimizer=tf.keras.optimizers.Adam(learning_rate=LR),
             loss='categorical_crossentropy',
             metrics=['accuracy']
         )

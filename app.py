@@ -18,7 +18,7 @@ app = Flask(__name__)
 ModelError = False
 
 try:
-    model_path = 'next_word_model-big.keras'
+    model_path = 'next_word_model-bigger.keras'
     if model_path == 'next_word_model-big.keras':
     # Initialize TextProcessor
         processor = TextProcessor(
@@ -77,7 +77,7 @@ def predict():
             next_word = predictor.predict_next_word(user_input, processor.tokenizer, temperature=temperate)
             if "<OOV>" in next_word:
                 next_word = ""
-                temperate += 0.01
+                temperate += 0.025
             user_input += next_word + " "
             prediction = f"{user_input} {next_word}"
             response += next_word + " "
