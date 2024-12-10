@@ -74,22 +74,28 @@ def predict():
         response = ""
         temperate = 0.25
 
-        num_of_predictions = 128
+        num_of_predictions = 512
         prev_word = ""
 
         while num_of_predictions > 0:
             next_word = predictor.predict_next_word(user_input, processor.tokenizer, temperature=temperate)
+            
+            # Skip OOV tokens
             if "<OOV>" in next_word:
-                next_word = ""
                 temperate += 0.025
-            user_input += next_word + " "
-            prediction = f"{user_input} {next_word}"
-            response += next_word + " "
+                continue
+                
+            # Skip duplicate consecutive words
             if next_word == prev_word:
                 temperate += 0.025
-            else:
-                prev_word = next_word
-                num_of_predictions -= 1
+                continue
+            
+            # Add new unique word
+            prev_word = next_word
+            num_of_predictions -= 1
+            user_input += next_word + " "
+            prediction = user_input
+            response += next_word + " "
 
         # for _ in range(128):
         #     next_word = predictor.predict_next_word(user_input, processor.tokenizer, temperature=temperate)
