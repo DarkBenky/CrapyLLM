@@ -73,7 +73,11 @@ def predict():
         
         response = ""
         temperate = 0.25
-        for _ in range(128):
+
+        num_of_predictions = 128
+        prev_word = ""
+
+        while num_of_predictions > 0:
             next_word = predictor.predict_next_word(user_input, processor.tokenizer, temperature=temperate)
             if "<OOV>" in next_word:
                 next_word = ""
@@ -81,6 +85,20 @@ def predict():
             user_input += next_word + " "
             prediction = f"{user_input} {next_word}"
             response += next_word + " "
+            if next_word == prev_word:
+                temperate += 0.025
+            else:
+                prev_word = next_word
+                num_of_predictions -= 1
+
+        # for _ in range(128):
+        #     next_word = predictor.predict_next_word(user_input, processor.tokenizer, temperature=temperate)
+        #     if "<OOV>" in next_word:
+        #         next_word = ""
+        #         temperate += 0.025
+        #     user_input += next_word + " "
+        #     prediction = f"{user_input} {next_word}"
+        #     response += next_word + " "
 
         current_time = datetime.datetime.now()
 
