@@ -165,8 +165,8 @@ class NextWordPredictor:
         
         # Simplified attention
         attention_output = MultiHeadAttention(
-            num_heads=4, 
-            key_dim=64
+            num_heads=16, 
+            key_dim=128
         )(x, x)
         x = Add()([x, attention_output])
         x = LayerNormalization()(x)
@@ -174,7 +174,7 @@ class NextWordPredictor:
         # Global average pooling instead of another LSTM
         x = tf.keras.layers.GlobalAveragePooling1D()(x)
         
-        x = Dense(128, activation='relu')(x)
+        x = Dense(256, activation='relu')(x)
         x = Dropout(0.1)(x)
         x = Dense(128, activation='relu')(x)
         x = Dropout(0.1)(x)
@@ -193,7 +193,7 @@ class NextWordPredictor:
         model.summary()
         return model
 
-    def train(self, train_dataset, epochs=10, checkpoint_path='next_word_model-big.keras'):
+    def train(self, train_dataset, epochs=10, checkpoint_path='next_word_model-bigger.keras'):
         checkpoint = ModelCheckpoint(
             checkpoint_path, 
             monitor='loss', 
@@ -207,7 +207,7 @@ class NextWordPredictor:
         )
         self.model.save(checkpoint_path)
 
-    def load(self, model_path='next_word_model-big.keras'):
+    def load(self, model_path='next_word_model-bigger.keras'):
         self.model = load_model(model_path)
 
     def predict_next_word(self, input_text, tokenizer, temperature=1.0):
@@ -234,26 +234,26 @@ class NextWordPredictor:
 if __name__ == "__main__":
     processor = TextProcessor(
         max_vocab_size=10000, 
-        max_sequence_length=512
+        max_sequence_length=2048
     )
     df = pd.read_csv('conversations.csv')
     X_processed, Y_processed = processor.preprocess_text(df, 'tokenizer.json')
-    train_dataset = processor.create_tf_dataset(X_processed, Y_processed)
+    train_dataset = processor.create_tf_dataset(X_processed, Y_processed, batch_size=16)
     print(f"Vocabulary size: {processor.vocab_size}")
     print(f"Input shape: {X_processed.shape}")
     print(f"Output shape: {Y_processed.shape}")
 
-    if os.path.exists('next_word_model-big.keras'):
+    if os.path.exists('next_word_model-bigger.keras'):
         print("Loading existing model...")
         predictor = NextWordPredictor(
             processor.vocab_size, 
             processor.max_sequence_length
         )
-        predictor.load('next_word_model-big.keras')
+        predictor.load('next_word_model-bigger.keras')
         predictor.train(
             train_dataset, 
             epochs=100, 
-            checkpoint_path='next_word_model-big.keras'
+            checkpoint_path='next_word_model-bigger.keras'
         )
     else:
         print("Training new model...")
@@ -264,7 +264,7 @@ if __name__ == "__main__":
         predictor.train(
             train_dataset, 
             epochs=100, 
-            checkpoint_path='next_word_model-big.keras'
+            checkpoint_path='next_word_model-bigger.keras'
         )
 
 

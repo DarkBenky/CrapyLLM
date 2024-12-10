@@ -18,11 +18,19 @@ app = Flask(__name__)
 ModelError = False
 
 try:
+    model_path = 'next_word_model-big.keras'
+    if model_path == 'next_word_model-big.keras':
     # Initialize TextProcessor
-    processor = TextProcessor(
-        max_vocab_size=10000, 
-        max_sequence_length=512
-    )
+        processor = TextProcessor(
+            max_vocab_size=10000, 
+            max_sequence_length=512
+        )
+    elif model_path == 'next_word_model-bigger.keras':
+        processor = TextProcessor(
+            max_vocab_size=10000, 
+            max_sequence_length=2048
+        )
+
 
     tokenizer_path = 'tokenizer.json'
     if os.path.exists(tokenizer_path):
@@ -31,7 +39,7 @@ try:
     else:
         raise FileNotFoundError("Tokenizer file not found. Please train the model first.")
 
-    model_path = 'next_word_model-big.keras'
+    
     predictor = NextWordPredictor(
         vocab_size=processor.vocab_size, 
         sequence_length=processor.max_sequence_length
