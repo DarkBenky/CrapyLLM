@@ -28,46 +28,58 @@ class TextProcessor:
         X = []  # Text inputs
         Y = []  # Next words
 
-        COUNT = 128
+        import createDataset as cd
+        x, y = cd.generateXY(df)
 
-        prompts = df.get("Prompts", "").tolist()
-        responses = df.get("Responses", "").tolist()
+        COUNT = 4_000
 
-        prompts = [random.choice(prompts) for i in range(COUNT)]
-        responses = [random.choice(responses) for i in range(COUNT)]
+        # random index
+        rand_index = [random.randint(0,len(x)) for i in range(COUNT)]
 
-        func_df = pd.read_csv('functions.csv')
-        func_prompts = func_df.get("Prompts", "").tolist()
-        func_responses = func_df.get("Responses", "").tolist()
+        for i in rand_index:
+            X.append(str(x[i]))
+            Y.append(str(y[i]))
 
-        c = 0
-        while c < COUNT :
-            random_index = random.randint(0, len(func_prompts) - 1)
-            X.append(func_prompts.pop(random_index))
-            Y.append(func_responses.pop(random_index))
-            c += 1
+        # COUNT = 128
+
+        # prompts = df.get("Prompts", "").tolist()
+        # responses = df.get("Responses", "").tolist()
+
+        # prompts = [random.choice(prompts) for i in range(COUNT)]
+        # responses = [random.choice(responses) for i in range(COUNT)]
+
+        # func_df = pd.read_csv('functions.csv')
+        # func_prompts = func_df.get("Prompts", "").tolist()
+        # func_responses = func_df.get("Responses", "").tolist()
+
+        # c = 0
+        # while c < COUNT :
+        #     random_index = random.randint(0, len(func_prompts) - 1)
+        #     X.append(func_prompts.pop(random_index))
+        #     Y.append(func_responses.pop(random_index))
+        #     c += 1
 
 
-        for p, r in zip(prompts, responses):
-            text = f"Prompt: {p} Response: "
-            words = r.split()
-            for i in range(1, len(words)):
-                input_sequence = text + ' '.join(words[:i])
-                next_word = words[i]
-                X.append(input_sequence)
-                Y.append(next_word)
-                # input without prompt
-                X.append('Response: '+' '.join(words[:i]))
-                Y.append(next_word)
+        # for p, r in zip(prompts, responses):
+        #     text = f"Prompt: {p} Response: "
+        #     words = r.split()
+        #     for i in range(1, len(words)):
+        #         input_sequence = text + ' '.join(words[:i])
+        #         next_word = words[i]
+        #         X.append(input_sequence)
+        #         Y.append(next_word)
+        #         # input without prompt
+        #         X.append('Response: '+' '.join(words[:i]))
+        #         Y.append(next_word)
 
-        # Train also on prompts
-        for p in prompts:
-            words = p.split()
-            for i in range(1, len(words)):
-                input_sequence = "Prompt: " + ' '.join(words[:i])
-                next_word = words[i]
-                X.append(input_sequence)
-                Y.append(next_word)
+        # # Train also on prompts
+        # for p in prompts:
+        #     words = p.split()
+        #     for i in range(1, len(words)):
+        #         input_sequence = "Prompt: " + ' '.join(words[:i])
+        #         next_word = words[i]
+        #         X.append(input_sequence)
+        #         Y.append(next_word)
 
 
         if os.path.exists(tokenizer_path):
@@ -106,6 +118,9 @@ class TextProcessor:
             Y_processed, 
             num_classes=self.vocab_size
         )
+
+        # Print vocabulary size for debugging
+        print(f"Actual vocabulary size after processing: {len(self.tokenizer.word_index) + 1}")
 
         return np.array(X_padded), np.array(Y_encoded)
 
