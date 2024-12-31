@@ -21,6 +21,7 @@ def simpleTokenizer(text, max_vocab_size = 10_000):
     text = text.split()
     word_count = {}
     for word in text:
+        word = word.lower()
         if word in word_count:
             word_count[word] += 1
         else:
@@ -36,7 +37,7 @@ def simpleTokenizer(text, max_vocab_size = 10_000):
 
 MAX_SEQ_LEN = 512
 BATCH_SIZE = 64
-GENERATIONS = 100
+GENERATIONS = 10
 
 def create_model(vocab_size, seq_len, embedding_dim=256):
     inputs = Input(shape=(seq_len,))
@@ -60,13 +61,21 @@ def create_model(vocab_size, seq_len, embedding_dim=256):
     x = LSTM(embedding_dim, return_sequences=True)(x)
     x = Dropout(0.1)(x)
 
+
+    # Dense layers
+    x = Dense(512, activation='relu')(x)
+    x = Dropout(0.1)(x)
+    x = Dense(256, activation='relu')(x)
+    x = Dropout(0.1)(x)
+
+
     # Dense over each time step -> (batch, seq_len, vocab_size)
     outputs = Dense(vocab_size, activation='softmax')(x)
 
     model = tf.keras.Model(inputs=inputs, outputs=outputs)
     return model
 
-def generate_text(model, prompt, word2idx, idx2word, max_seq_len=512, num_tokens=64):
+def generate_text(model, prompt, word2idx, idx2word, max_seq_len=512, num_tokens=64, temperature=1.0):
     """
     Generate up to num_tokens predictions given a user prompt.
     """
@@ -89,7 +98,12 @@ def generate_text(model, prompt, word2idx, idx2word, max_seq_len=512, num_tokens
                           else predictions[:, -1, :]
         
         # Greedy pick the most likely next token
-        next_token_id = np.argmax(last_step_preds[0])
+        # next_token_id = np.argmax(last_step_preds[0])
+
+        # Sample from the distribution
+        last_step_preds = np.log(last_step_preds) / temperature
+        last_step_preds = np.exp(last_step_preds) / np.sum(np.exp(last_step_preds))
+        next_token_id = np.random.choice(len(last_step_preds[0]), p=last_step_preds[0])
         
         # Stop if next token is the padding index or out of vocab
         if next_token_id == word2idx['<UNK>']:
@@ -108,18 +122,27 @@ def generate_text(model, prompt, word2idx, idx2word, max_seq_len=512, num_tokens
         generated_words.append(idx2word.get(t, '<UNK>'))
     return ' '.join(generated_words)
 
-def train():
+def train(model=None):
     text = load_dataset()
-    word2idx, idx2word = simpleTokenizer(text)
+    word2idx, idx2word = simpleTokenizer(text, 4096)
     word2idx['<UNK>'] = len(word2idx)
     vocab_size = len(word2idx)
 
-    model = create_model(vocab_size, MAX_SEQ_LEN)
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
-        loss='sparse_categorical_crossentropy',
-        metrics=['accuracy']
-    )
+    if model is None:
+        model = create_model(vocab_size, MAX_SEQ_LEN)
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
+            loss='sparse_categorical_crossentropy',
+            metrics=['accuracy']
+        )
+    else:
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
+            loss='sparse_categorical_crossentropy',
+            metrics=['accuracy']
+        )
+
+    model.summary()
 
     for i in range(GENERATIONS):
         X = []
@@ -131,7 +154,7 @@ def train():
             seq_indices = []
             for word in seq:
                 seq_indices.append(word2idx.get(word, word2idx['<UNK>']))
-            # Example label shift by 1
+            # X is the sequence up to the second-to-last word
             X.append(seq_indices[:-1])
             Y.append(seq_indices[1:])
         
@@ -142,9 +165,10 @@ def train():
             Y, maxlen=MAX_SEQ_LEN, padding='post'
         )
         
-        model.fit(X, Y, batch_size=BATCH_SIZE, epochs=10, verbose=1)
+        print(f"Generation {i + 1}/{GENERATIONS + 1}")
+        model.fit(X, Y, batch_size=BATCH_SIZE, epochs=50, verbose=1)
     
-    model.save('simple_model.h5')
+    model.save('simple_model.keras')
 
     # -----------------------------------------------
     # After training, interactive CLI for generation
@@ -162,12 +186,17 @@ def train():
             word2idx=word2idx,
             idx2word=idx2word,
             max_seq_len=MAX_SEQ_LEN,
-            num_tokens=64
+            num_tokens=64,
+            temperature=0.5
         )
         print(f"\nGenerated: {generated_text}")
 
     return model, word2idx, idx2word
 
 # Start training (will also start CLI after training completes)
+
+# load pre-trained model
+# model = tf.keras.models.load_model('simple_model.keras')
+
 train()
 
