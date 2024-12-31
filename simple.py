@@ -154,6 +154,8 @@ def train():
         if user_input.lower().strip() in ["exit", "quit"]:
             break
         
+        user_input = user_input.lower()
+
         generated_text = generate_text(
             model=model,
             prompt=user_input,
