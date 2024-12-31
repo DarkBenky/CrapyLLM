@@ -191,8 +191,8 @@ def train(model=None):
             word2idx=word2idx,
             idx2word=idx2word,
             max_seq_len=MAX_SEQ_LEN,
-            num_tokens=64,
-            temperature=0.5
+            num_tokens=256,
+            temperature=1.5
         )
         print(f"\nGenerated: {generated_text}")
 
@@ -201,7 +201,6 @@ def train(model=None):
 # Start training (will also start CLI after training completes)
 
 # load pre-trained model
-# model = tf.keras.models.load_model('simple_model.keras')
-
-train()
+model = tf.keras.models.load_model('simple_model.keras')
+train(model=model)
 
