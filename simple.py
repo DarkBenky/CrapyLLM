@@ -37,7 +37,7 @@ def simpleTokenizer(text, max_vocab_size = 10_000):
 
 MAX_SEQ_LEN = 512
 BATCH_SIZE = 64
-GENERATIONS = 10
+GENERATIONS = 1
 
 def create_model(vocab_size, seq_len, embedding_dim=256):
     inputs = Input(shape=(seq_len,))
@@ -110,9 +110,9 @@ def generate_text(model, prompt, word2idx, idx2word, max_seq_len=512, num_tokens
         last_step_preds = np.exp(last_step_preds) / np.sum(np.exp(last_step_preds))
         next_token_id = np.random.choice(len(last_step_preds[0]), p=last_step_preds[0])
         
-        # Stop if next token is the padding index or out of vocab
-        if next_token_id == word2idx['<UNK>']:
-            break
+        # # Stop if next token is the padding index or out of vocab
+        # if next_token_id == word2idx['<UNK>']:
+        #     break
         
         # Append next token
         tokens.append(next_token_id)
