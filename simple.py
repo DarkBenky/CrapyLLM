@@ -46,7 +46,7 @@ def create_model(vocab_size, seq_len, embedding_dim=256):
     x = Embedding(vocab_size, embedding_dim)(inputs)
     
     # Multiple LSTM + Multi-head Attention blocks, as before.
-    for _ in range(3):
+    for _ in range(12):
         lstm_out = LSTM(embedding_dim, return_sequences=True)(x)
         x = LayerNormalization()(lstm_out)
 
@@ -63,10 +63,15 @@ def create_model(vocab_size, seq_len, embedding_dim=256):
 
 
     # Dense layers
+    x = Dense(1024, activation='relu')(x)
+    x = Dropout(0.1)(x)
     x = Dense(512, activation='relu')(x)
     x = Dropout(0.1)(x)
     x = Dense(256, activation='relu')(x)
     x = Dropout(0.1)(x)
+    x = Dense(128, activation='relu')(x)
+    x = Dropout(0.1)(x)
+
 
 
     # Dense over each time step -> (batch, seq_len, vocab_size)
