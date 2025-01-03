@@ -24,6 +24,10 @@ def load_dataset():
     for index, row in df.iterrows():
         text += row['Prompts'] + ' ' + row['Responses'] + ' '
     
+    # load the text file 
+    with open('text.txt', 'r') as file:
+        text += file.read()
+        
     return text
 
 def simpleTokenizer(text, max_vocab_size = 10_000):
