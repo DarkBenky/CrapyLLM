@@ -50,7 +50,7 @@ def simpleTokenizer(text, max_vocab_size = 10_000):
 
 MAX_SEQ_LEN = 512
 BATCH_SIZE = 32
-GENERATIONS = 1000
+GENERATIONS = 1
 
 def create_model(vocab_size, seq_len, embedding_dim=256):
     inputs = Input(shape=(seq_len,))
@@ -116,12 +116,23 @@ def generate_text(model, prompt, word2idx, idx2word, max_seq_len=512, num_tokens
                           else predictions[:, -1, :]
         
         # Greedy pick the most likely next token
-        # next_token_id = np.argmax(last_step_preds[0])
+        next_token_id = np.argmax(last_step_preds[0])
+        
+        # select the second most likely token if the most likely token is <UNK>
+        if next_token_id == word2idx['<UNK>']:
+            # get the second most likely token
+            next_token_id = np.argsort(last_step_preds[0])[-2]
+
+        # select the word that is not only one character
+        if len(idx2word[next_token_id]) == 1:
+            next_token_id = np.argsort(last_step_preds[0])[-3]
+        
+
 
         # Sample from the distribution
-        last_step_preds = np.log(last_step_preds) / temperature
-        last_step_preds = np.exp(last_step_preds) / np.sum(np.exp(last_step_preds))
-        next_token_id = np.random.choice(len(last_step_preds[0]), p=last_step_preds[0])
+        # last_step_preds = np.log(last_step_preds) / temperature
+        # last_step_preds = np.exp(last_step_preds) / np.sum(np.exp(last_step_preds))
+        # next_token_id = np.random.choice(len(last_step_preds[0]), p=last_step_preds[0])
         
         # # Stop if next token is the padding index or out of vocab
         # if next_token_id == word2idx['<UNK>']:
@@ -145,6 +156,7 @@ def train(model=None):
     word2idx, idx2word = simpleTokenizer(text, 16_000)
     print(f"Vocabulary size: {len(word2idx)}")
     word2idx['<UNK>'] = len(word2idx)
+    idx2word[len(word2idx)] = '<UNK>'
     vocab_size = len(word2idx)
 
     if model is None:
@@ -163,7 +175,6 @@ def train(model=None):
 
     model.summary()
 
-    best_accuracy = 0.0
     best_loss = 100.0
 
     for i in range(GENERATIONS):
@@ -227,6 +238,6 @@ def train(model=None):
 
 
 # load pre-trained model
-# model = tf.keras.models.load_model('simple_model.keras')
-train()
+model = tf.keras.models.load_model('simple_model.keras')
+train(model)
 
