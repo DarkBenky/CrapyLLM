@@ -7,6 +7,15 @@ from tensorflow.keras.layers import (
     Dense, LSTM, MultiHeadAttention, LayerNormalization,
     Dropout, Embedding, Input
 )
+import os
+
+# Set the number of threads
+num_threads = os.cpu_count()  # Use all available cores
+
+# Configure TensorFlow to use multiple threads
+tf.config.threading.set_intra_op_parallelism_threads(num_threads)
+tf.config.threading.set_inter_op_parallelism_threads(num_threads)
+
 
 # load whole text
 def load_dataset():
@@ -63,14 +72,14 @@ def create_model(vocab_size, seq_len, embedding_dim=256):
 
 
     # Dense layers
-    x = Dense(1024, activation='relu')(x)
-    x = Dropout(0.1)(x)
-    x = Dense(512, activation='relu')(x)
-    x = Dropout(0.1)(x)
-    x = Dense(256, activation='relu')(x)
-    x = Dropout(0.1)(x)
-    x = Dense(128, activation='relu')(x)
-    x = Dropout(0.1)(x)
+    # x = Dense(1024, activation='relu')(x)
+    # x = Dropout(0.1)(x)
+    # x = Dense(512, activation='relu')(x)
+    # x = Dropout(0.1)(x)
+    # x = Dense(256, activation='relu')(x)
+    # x = Dropout(0.1)(x)
+    # x = Dense(128, activation='relu')(x)
+    # x = Dropout(0.1)(x)
 
 
 
@@ -134,15 +143,15 @@ def train(model=None):
     vocab_size = len(word2idx)
 
     if model is None:
-        model = create_model(vocab_size, MAX_SEQ_LEN)
+        model = create_model(vocab_size, MAX_SEQ_LEN, embedding_dim=4096)
         model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
+            optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),
             loss='sparse_categorical_crossentropy',
             metrics=['accuracy']
         )
     else:
         model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
+            optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),
             loss='sparse_categorical_crossentropy',
             metrics=['accuracy']
         )
@@ -201,6 +210,6 @@ def train(model=None):
 # Start training (will also start CLI after training completes)
 
 # load pre-trained model
-model = tf.keras.models.load_model('simple_model.keras')
-train(model=model)
+# model = tf.keras.models.load_model('simple_model.keras')
+train()
 
