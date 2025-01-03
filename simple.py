@@ -138,7 +138,7 @@ def generate_text(model, prompt, word2idx, idx2word, max_seq_len=512, num_tokens
 
 def train(model=None):
     text = load_dataset()
-    word2idx, idx2word = simpleTokenizer(text, 4096)
+    word2idx, idx2word = simpleTokenizer(text, 16_000)
     word2idx['<UNK>'] = len(word2idx)
     vocab_size = len(word2idx)
 
@@ -213,14 +213,13 @@ def train(model=None):
             word2idx=word2idx,
             idx2word=idx2word,
             max_seq_len=MAX_SEQ_LEN,
-            num_tokens=32,
-            temperature=1.5
+            num_tokens=128,
+            temperature=1.0
         )
         print(f"\nGenerated: {generated_text}")
 
     return model, word2idx, idx2word
 
-# Start training (will also start CLI after training completes)
 
 # load pre-trained model
 # model = tf.keras.models.load_model('simple_model.keras')
