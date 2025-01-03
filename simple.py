@@ -143,6 +143,7 @@ def generate_text(model, prompt, word2idx, idx2word, max_seq_len=512, num_tokens
 def train(model=None):
     text = load_dataset()
     word2idx, idx2word = simpleTokenizer(text, 16_000)
+    print(f"Vocabulary size: {len(word2idx)}")
     word2idx['<UNK>'] = len(word2idx)
     vocab_size = len(word2idx)
 
