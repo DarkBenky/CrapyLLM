@@ -45,8 +45,8 @@ def simpleTokenizer(text, max_vocab_size = 10_000):
     return word2idx, idx2word
 
 MAX_SEQ_LEN = 512
-BATCH_SIZE = 64
-GENERATIONS = 1
+BATCH_SIZE = 32
+GENERATIONS = 1000
 
 def create_model(vocab_size, seq_len, embedding_dim=256):
     inputs = Input(shape=(seq_len,))
@@ -55,7 +55,7 @@ def create_model(vocab_size, seq_len, embedding_dim=256):
     x = Embedding(vocab_size, embedding_dim)(inputs)
     
     # Multiple LSTM + Multi-head Attention blocks, as before.
-    for _ in range(12):
+    for _ in range(6):
         lstm_out = LSTM(embedding_dim, return_sequences=True)(x)
         x = LayerNormalization()(lstm_out)
 
@@ -143,7 +143,7 @@ def train(model=None):
     vocab_size = len(word2idx)
 
     if model is None:
-        model = create_model(vocab_size, MAX_SEQ_LEN, embedding_dim=4096)
+        model = create_model(vocab_size, MAX_SEQ_LEN, embedding_dim=1024)
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),
             loss='sparse_categorical_crossentropy',
@@ -157,6 +157,9 @@ def train(model=None):
         )
 
     model.summary()
+
+    best_accuracy = 0.0
+    best_loss = 100.0
 
     for i in range(GENERATIONS):
         X = []
@@ -180,9 +183,19 @@ def train(model=None):
         )
         
         print(f"Generation {i + 1}/{GENERATIONS + 1}")
-        model.fit(X, Y, batch_size=BATCH_SIZE, epochs=50, verbose=1)
+        model.fit(X, Y, batch_size=BATCH_SIZE, epochs=10, verbose=1)
+
+        # print(model.history.history['accuracy'][-1])
+        # if best_accuracy < model.history.history['accuracy'][-1]:
+        #     best_accuracy = model.history.history['accuracy'][-1]
+        #     model.save('simple_model.keras')
+
+        print(model.history.history['loss'][-1])
+        if best_loss > model.history.history['loss'][-1]:
+            best_loss = model.history.history['loss'][-1]
+            model.save('simple_model.keras')
     
-    model.save('simple_model.keras')
+    # model.save('simple_model.keras')
 
     # -----------------------------------------------
     # After training, interactive CLI for generation
@@ -200,7 +213,7 @@ def train(model=None):
             word2idx=word2idx,
             idx2word=idx2word,
             max_seq_len=MAX_SEQ_LEN,
-            num_tokens=256,
+            num_tokens=32,
             temperature=1.5
         )
         print(f"\nGenerated: {generated_text}")
