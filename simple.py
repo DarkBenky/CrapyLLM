@@ -5,9 +5,15 @@ import tensorflow as tf
 import numpy as np
 from tensorflow.keras.layers import (
     Dense, LSTM, MultiHeadAttention, LayerNormalization,
-    Dropout, Embedding, Input
+    Dropout, Embedding, Input, TextVectorization
 )
 import os
+import json
+
+# Constants
+TOKENIZER_PATH = "tokenizer"
+VOCAB_PATH = "vocabulary.json"
+MAX_VOCAB_SIZE = 10000
 
 # Set the number of threads
 num_threads = os.cpu_count()  # Use all available cores
@@ -30,23 +36,40 @@ def load_dataset():
         
     return text
 
-def simpleTokenizer(text, max_vocab_size = 10_000):
-    text = text.split()
-    word_count = {}
-    for word in text:
-        word = word.lower()
-        if word in word_count:
-            word_count[word] += 1
-        else:
-            word_count[word] = 1
-    word_count = dict(sorted(word_count.items(), key=lambda item: item[1], reverse=True))
-    vocab = list(word_count.keys())[:max_vocab_size]
-    word2idx = {}
-    idx2word = {}
-    for i, word in enumerate(vocab):
-        word2idx[word] = i
-        idx2word[i] = word
-    return word2idx, idx2word
+def create_tokenizer(text, max_vocab_size=MAX_VOCAB_SIZE):
+    if os.path.exists(TOKENIZER_PATH):
+        tokenizer = tf.keras.models.load_model(TOKENIZER_PATH)
+        with open(VOCAB_PATH, 'r') as f:
+            vocabulary = json.load(f)
+        return tokenizer, vocabulary
+    
+    # Create and configure tokenizer
+    tokenizer = TextVectorization(
+        max_tokens=max_vocab_size,
+        standardize='lower_and_strip_punctuation',
+        output_sequence_length=None,
+        output_mode='int'
+    )
+    
+    # Adapt tokenizer to the text
+    tokenizer.adapt([text])
+    
+    # Save vocabulary
+    vocabulary = dict(enumerate(tokenizer.get_vocabulary()))
+    with open(VOCAB_PATH, 'w') as f:
+        json.dump(vocabulary, f)
+    
+    # Save tokenizer
+    model = tf.keras.Sequential([tokenizer])
+    model.save(TOKENIZER_PATH)
+    
+    return tokenizer, vocabulary
+
+def encode_text(tokenizer, text):
+    return tokenizer(tf.constant([text]))[0]
+
+def decode_text(vocabulary, sequence):
+    return ' '.join([vocabulary.get(str(i), '?') for i in sequence.numpy()])
 
 MAX_SEQ_LEN = 512
 BATCH_SIZE = 32
@@ -93,70 +116,63 @@ def create_model(vocab_size, seq_len, embedding_dim=256):
     model = tf.keras.Model(inputs=inputs, outputs=outputs)
     return model
 
-def generate_text(model, prompt, word2idx, idx2word, max_seq_len=512, num_tokens=64, temperature=1.0):
+def generate_text(model, prompt, tokenizer, vocabulary, max_seq_len=512, num_tokens=64, temperature=1.0):
     """
-    Generate up to num_tokens predictions given a user prompt.
+    Generate text using TextVectorization tokenizer
     """
     # Convert prompt to token IDs
-    tokens = []
-    for word in prompt.split():
-        tokens.append(word2idx.get(word, word2idx['<UNK>']))
+    current_tokens = tokenizer(tf.constant([prompt]))[0]
+    tokens = current_tokens.numpy().tolist()
     
     for _ in range(num_tokens):
-        # Pad current tokens to max_seq_len
-        padded_tokens = tf.keras.preprocessing.sequence.pad_sequences(
-            [tokens], maxlen=max_seq_len, padding='post'
-        )
-        
-        # Predict next token for the last position
-        # Model output shape: (1, max_seq_len, vocab_size)
+        # Pad sequence if needed
+        if len(tokens) < max_seq_len:
+            padded_tokens = tf.pad(
+                [tokens], 
+                [[0, 0], [0, max_seq_len - len(tokens)]], 
+                'constant'
+            )
+        else:
+            padded_tokens = [tokens[-max_seq_len:]]
+            
+        # Get model predictions
         predictions = model.predict(padded_tokens, verbose=0)
-        # Take the predictions from the last time-step
-        last_step_preds = predictions[:, len(tokens) - 1, :] if len(tokens) < max_seq_len \
-                          else predictions[:, -1, :]
+        last_step_preds = predictions[0, len(tokens)-1 if len(tokens) < max_seq_len else -1, :]
         
-        # Greedy pick the most likely next token
-        next_token_id = np.argmax(last_step_preds[0])
+        if temperature == 0:
+            # Greedy sampling
+            next_token_id = np.argmax(last_step_preds)
+        else:
+            # Temperature sampling
+            scaled_preds = last_step_preds / temperature
+            scaled_preds = np.exp(scaled_preds) / np.sum(np.exp(scaled_preds))
+            next_token_id = np.random.choice(len(scaled_preds), p=scaled_preds)
+            
+        # Skip special tokens and single characters
+        vocab_word = vocabulary.get(str(next_token_id), '')
+        if len(vocab_word) <= 1:
+            # Get next best prediction
+            sorted_indices = np.argsort(last_step_preds)[::-1]
+            for idx in sorted_indices[1:]:
+                if len(vocabulary.get(str(idx), '')) > 1:
+                    next_token_id = idx
+                    break
         
-        # select the second most likely token if the most likely token is <UNK>
-        if next_token_id == word2idx['<UNK>']:
-            # get the second most likely token
-            next_token_id = np.argsort(last_step_preds[0])[-2]
-
-        # select the word that is not only one character
-        if len(idx2word[next_token_id]) == 1:
-            next_token_id = np.argsort(last_step_preds[0])[-3]
-        
-
-
-        # Sample from the distribution
-        # last_step_preds = np.log(last_step_preds) / temperature
-        # last_step_preds = np.exp(last_step_preds) / np.sum(np.exp(last_step_preds))
-        # next_token_id = np.random.choice(len(last_step_preds[0]), p=last_step_preds[0])
-        
-        # # Stop if next token is the padding index or out of vocab
-        # if next_token_id == word2idx['<UNK>']:
-        #     break
-        
-        # Append next token
         tokens.append(next_token_id)
         
-        # Optional stopping if we reach max_seq_len
-        if len(tokens) >= max_seq_len:
+        # Stop if end token is generated
+        if vocab_word == '</s>':
             break
-    
-    # Convert full tokens list back to words
-    generated_words = []
-    for t in tokens:
-        generated_words.append(idx2word.get(t, '<UNK>'))
-    return ' '.join(generated_words)
+            
+    # Convert tokens back to text
+    return decode_text(vocabulary, tf.constant(tokens))
 
 def train(model=None):
     text = load_dataset()
-    word2idx, idx2word = simpleTokenizer(text, 16_000)
+    tokenizer, vocabulary = create_tokenizer(text, MAX_VOCAB_SIZE)
+    word2idx = {word: idx for idx, word in vocabulary.items()}
+    idx2word = {idx: word for word, idx in word2idx.items()}
     print(f"Vocabulary size: {len(word2idx)}")
-    word2idx['<UNK>'] = len(word2idx)
-    idx2word[len(word2idx)] = '<UNK>'
     vocab_size = len(word2idx)
 
     if model is None:
@@ -226,8 +242,8 @@ def train(model=None):
         generated_text = generate_text(
             model=model,
             prompt=user_input,
-            word2idx=word2idx,
-            idx2word=idx2word,
+            tokenizer=tokenizer,
+            vocabulary=vocabulary,
             max_seq_len=MAX_SEQ_LEN,
             num_tokens=128,
             temperature=1.0
